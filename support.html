@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Support — Arcade Classics Neo</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;line-height:1.6;background:#0b0f1c;color:#e8e8ff}
+a{color:#66ccff} header,main{max-width:900px;margin:0 auto;padding:20px} header{border-bottom:1px solid #24304e} h1{margin:6px 0}
+.card{background:#101a2e;border:1px solid #24304e;border-radius:12px;padding:16px;margin:12px 0}
+.code{background:#0b0f1c;border:1px solid #24304e;border-radius:10px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all}
+button,input{background:#101425;color:#e8e8ff;border:1px solid #2a3358;border-radius:10px;padding:10px 12px;font-size:1rem}</style>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+  // re-use your existing values
+  window.SUPABASE_URL = window.SUPABASE_URL || "https://YOUR-PROJECT.supabase.co";
+  window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "YOUR-ANON-PUBLIC-KEY";
+</script></head><body>
+<header><a href="./">← Home</a><h1>Player Support</h1></header>
+<main>
+<div class="card"><h2>Get help</h2>
+<p>Stuck or found a bug? Email us: <a href="mailto:support@yourdomain.com">support@yourdomain.com</a></p>
+<p>Legal: <a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms</a> · <a href="eula.html">EULA</a></p></div>
+
+<div class="card"><h2>Your Account</h2>
+<div id="out">
+  <p>Sign in to view your early-player code and PIN.</p>
+  <input id="email" type="email" placeholder="you@example.com">
+  <button id="send">Send sign-in link</button>
+</div>
+<div id="in" style="display:none">
+  <p>Signed in as <span id="who"></span></p>
+  <div><strong>Early-player code</strong><div id="code" class="code">…</div></div>
+  <div style="margin-top:8px"><strong>5-digit PIN</strong><div id="pin" class="code">…</div></div>
+  <div style="margin-top:8px">
+    <button id="emailCode">Email code</button>
+    <button id="emailPin">Email PIN</button>
+    <button id="signout" style="margin-left:8px">Sign out</button>
+  </div>
+</div>
+</div>
+</main>
+<script>
+const { createClient } = supabase; const sb=createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+const out=document.getElementById('out'), inn=document.getElementById('in'), who=document.getElementById('who'),
+      code=document.getElementById('code'), pin=document.getElementById('pin');
+
+async function ensure(user){
+  let { data: prof } = await sb.from('profiles').select('email,pin').eq('id', user.id).maybeSingle();
+  if(!prof){ prof={ email:user.email, pin:String(Math.floor(Math.random()*100000)).padStart(5,'0') };
+    await sb.from('profiles').insert({ id:user.id, email:prof.email, pin:prof.pin }); }
+  let { data: pc } = await sb.from('player_codes').select('code').eq('user_id', user.id).maybeSingle();
+  if(!pc){ const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const code=[...crypto.getRandomValues(new Uint8Array(20))].map(b=>alphabet[b%alphabet.length]).join('');
+    await sb.from('player_codes').insert({ user_id:user.id, code }); pc={code}; }
+  return { pin: prof.pin, code: pc.code };
+}
+async function refresh(){
+  const { data:{ user }} = await sb.auth.getUser();
+  if(!user){ out.style.display=''; inn.style.display='none'; return; }
+  out.style.display='none'; inn.style.display='';
+  who.textContent=user.email; const s=await ensure(user); pin.textContent=s.pin; code.textContent=s.code;
+}
+send.onclick=async()=>{
+  const email=(document.getElementById('email').value||'').trim();
+  if(!email) return alert('Enter email');
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href }});
+  if(error) alert(error.message); else alert('Check your inbox for the sign-in link.');
+};
+emailCode.onclick=async()=>{ const { data:{ user }}=await sb.auth.getUser(); if(!user) return;
+  location.href=`mailto:${encodeURIComponent(user.email)}?subject=${encodeURIComponent('Your ACN Code')}&body=${encodeURIComponent('Your code: '+code.textContent)}`; };
+emailPin.onclick=async()=>{ const { data:{ user }}=await sb.auth.getUser(); if(!user) return;
+  location.href=`mailto:${encodeURIComponent(user.email)}?subject=${encodeURIComponent('Your ACN PIN')}&body=${encodeURIComponent('Your PIN: '+pin.textContent)}`; };
+signout.onclick=async()=>{ await sb.auth.signOut(); refresh(); };
+sb.auth.onAuthStateChange(()=>refresh()); refresh();
+</script>
+</body></html>
