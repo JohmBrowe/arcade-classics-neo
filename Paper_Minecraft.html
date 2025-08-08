@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Paper Minecraft (lite) — Arcade Classics Neo</title>
+<style>
+  html,body{margin:0;height:100%;background:#001014;color:#e8e8ff;font-family:system-ui}
+  #wrap{display:grid;place-items:center;height:100%}
+  canvas{image-rendering:pixelated;touch-action:none;border:8px solid #0b2030;border-radius:12px;background:#69c}
+  #hud{position:fixed;inset:auto 0 0 0;display:flex;gap:8px;justify-content:center;padding:10px;background:linear-gradient(0,#001014,transparent)}
+  button{background:#0b2030;color:#e8e8ff;border:1px solid #2a3358;border-radius:10px;padding:10px 14px;font-size:16px}
+  .slot{width:34px;height:34px;border:1px solid #2a3358;border-radius:6px;display:inline-grid;place-items:center;background:#0a1a28;margin:0 4px}
+</style></head><body>
+<div id="wrap"><canvas id="c" width="480" height="300"></canvas></div>
+<div id="hud">
+  <button onclick="left()">◀</button><button onclick="right()">▶</button><button onclick="jump()">⤒</button>
+  <div class="slot" onclick="tool='mine'">⛏</div>
+  <div class="slot" onclick="tool='place'; cur=1">🟩</div>
+  <div class="slot" onclick="tool='place'; cur=2">🟫</div>
+  <div class="slot" onclick="tool='place'; cur=3">🪨</div>
+</div>
+<script>
+const T=20, W=48, H=15; const ctx=c.getContext('2d'); // tiles: 0 air,1 grass,2 dirt,3 stone
+let world=[...Array(H)].map((_,y)=>Array(W).fill(0));
+for(let x=0;x<W;x++){ let g=10+Math.floor(Math.sin(x*0.4)*2); for(let y=g;y<H;y++) world[y][x]=(y==g)?1:(y<g+3?2:3) }
+let x=4,y=0,vx=0,vy=0,onG=false, tool='mine', cur=1, touchPlace=false;
+
+function step(){
+  // physics
+  vy+=0.35; let nx=x+vx, ny=y+vy;
+  // horizontal
+  if(col(nx,y)){ while(!col(x+Math.sign(vx)*0.01,y)) x+=Math.sign(vx)*0.01; vx=0 } else x=nx;
+  // vertical
+  if(col(x,ny)){ while(!col(x,y+Math.sign(vy)*0.01)) y+=Math.sign(vy)*0.01; if(vy>0) onG=true; vy=0 } else { y=ny; onG=false }
+  vx*=0.8; if(Math.abs(vx)<0.01)vx=0;
+  draw(); requestAnimationFrame(step)
+}
+function col(px,py){ // simple AABB vs tiles
+  const tiles=[[0,0],[0.8,0.95]]; for(let yy=0;yy<2;yy++)for(let xx=0;xx<2;xx++){
+    const tx=Math.floor((px+tiles[xx][0])*1/T), ty=Math.floor((py+tiles[yy][1])*1/T);
+  }
+  const ax=Math.floor(px/T), ay=Math.floor(py/T);
+  for(let yy=0;yy<2;yy++)for(let xx=0;xx<1;xx++){
+    const tx=Math.floor((px+xx*18)/T), ty=Math.floor((py+yy*18)/T);
+    if(world[ty]?.[tx]>0) return true
+  } return false
+}
+function draw(){
+  // camera
+  const cx=Math.max(0,Math.min(W*T - c.width, x - c.width/2));
+  ctx.fillStyle='#69c'; ctx.fillRect(0,0,c.width,c.height);
+  // world
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){ const v=world[j][i]; if(!v)continue;
+    let col=v==1?'#3c6':'#a63'; if(v==3)col='#777';
+    ctx.fillStyle=col; ctx.fillRect(i*T-cx, j*T, T-1,T-1);
+    if(v==1){ctx.fillStyle='#2a5'; ctx.fillRect(i*T-cx, j*T, T-1,4)}
+  }
+  // player
+  ctx.fillStyle='#ffd04d'; ctx.fillRect(x-cx, y, 18,18); ctx.fillStyle='#333'; ctx.fillRect(x-cx+4,y+6,4,4);
+  // tool cursor
+  ctx.strokeStyle= tool=='mine'?'#f55':'#5f5'; ctx.lineWidth=2;
+  const mx=(lastX??c.width/2)+0, my=(lastY??c.height/2)+0; const tx=Math.floor((mx+cx)/T), ty=Math.floor(my/T);
+  ctx.strokeRect(tx*T-cx+0.5, ty*T+0.5, T-1, T-1);
+}
+function left(){ vx=-2 }
+function right(){ vx=2 }
+function jump(){ if(onG){ vy=-6 } }
+let lastX=null,lastY=null;
+c.addEventListener('mousemove',e=>{lastX=e.offsetX; lastY=e.offsetY});
+c.addEventListener('click',e=>{const cx=Math.max(0,Math.min(W*T - c.width, x - c.width/2)); const tx=Math.floor((e.offsetX+cx)/T), ty=Math.floor(e.offsetY/T);
+  if(tool=='mine'){ if(world[ty]?.[tx]) world[ty][tx]=0 }
+  else if(tool=='place'){ if(world[ty]?.[tx]===0) world[ty][tx]=cur }
+});
+addEventListener('keydown',e=>{ if(e.key==='a'||e.key==='ArrowLeft')left(); if(e.key==='d'||e.key==='ArrowRight')right(); if(e.key===' '||e.key==='w'||e.key==='ArrowUp')jump(); });
+requestAnimationFrame(step);
+</script></body></html>
