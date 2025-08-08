@@ -22,74 +22,210 @@
   <button onclick="undo()">Undo</button>
   <label>Bot:
     <select id="lvl" onchange="lvl=parseInt(this.value)">
-      <option value="1">Easy</option><option value="2" selected>Normal</option><option value="3">Hard</option>
+      <option value="1">Easy</option>
+      <option value="2" selected>Normal</option>
+      <option value="3">Hard</option>
     </select>
   </label>
 </div>
 <script>
-const boardEl=document.getElementById('board'); let side=1; // 1 white, -1 black
-const P={'p':1,'n':3,'b':3,'r':5,'q':9,'k':100};
-let S=['rnbqkbnr','pppppppp','........','........','........','........','PPPPPPPP','RNBQKBNR'].map(r=>r.split(''));
-let hist=[], lvl=2, sel=null, hints=[];
+const PIECE = {p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'};
+const VALUE = {p:1,n:3,b:3,r:5,q:9,k:100};
+
+const boardEl = document.getElementById('board');
+const statusEl = document.getElementById('status');
+
+let S, side, hist=[], sel=null, hints=[], lvl=2;
+
+function startPosition(){
+  return [
+   'rnbqkbnr',
+   'pppppppp',
+   '........',
+   '........',
+   '........',
+   '........',
+   'PPPPPPPP',
+   'RNBQKBNR'
+  ].map(r=>r.split(''));
+}
+function color(c){ return c===c.toUpperCase()? 1 : -1 } // 1 white, -1 black
+function inside(x,y){ return x>=0 && x<8 && y>=0 && y<8 }
+function pieceAt(x,y){ return S[y][x] }
+function setPiece(x,y,v){ S[y][x]=v }
 
 function draw(){
   boardEl.innerHTML='';
   for(let y=0;y<8;y++)for(let x=0;x<8;x++){
-    const sq=document.createElement('div'); sq.className='sq '+(((x+y)&1)?'d':'l');
-    const ch=S[y][x]; if(ch!='.') sq.textContent=({p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'})[ch];
-    sq.dataset.x=x; sq.dataset.y=y; boardEl.appendChild(sq);
+    const d=document.createElement('div');
+    d.className='sq '+(((x+y)&1)?'d':'l');
+    const p=pieceAt(x,y);
+    if(p!=='.') d.textContent = PIECE[p];
+    d.dataset.x=x; d.dataset.y=y;
+    boardEl.appendChild(d);
   }
   if(sel){ cell(sel.x,sel.y).classList.add('sel'); for(const [, ,tx,ty] of hints) cell(tx,ty).classList.add('hint'); }
 }
 const cell=(x,y)=>boardEl.children[y*8+x];
-const color=c=>c===c.toUpperCase()?1:-1;
-const inside=(x,y)=>x>=0&&x<8&&y>=0&&y<8;
 
-function movesAt(x,y){
-  const p=S[y][x]; if(p=='.'||color(p)!=side) return [];
-  const c=color(p), t=p.toLowerCase(); let mv=[];
-  const push=(nx,ny)=>{ if(!inside(nx,ny))return; const q=S[ny][nx]; if(q=='.'||color(q)!=c) mv.push([x,y,nx,ny]) }
-  if(t=='p'){ const dy=c==1?-1:1, sy=c==1?6:1;
-    if(S[y+dy]?.[x]=='.') mv.push([x,y,x,y+dy]);
-    if(y==sy && S[y+dy]?.[x]=='.' && S[y+2*dy]?.[x]=='.') mv.push([x,y,x,y+2*dy]);
-    for(const dx of [-1,1]) if(inside(x+dx,y+dy)&&S[y+dy][x+dx]!='.'&&color(S[y+dy][x+dx])!=c) mv.push([x,y,x+dx,y+dy]);
+// ---------- MOVE GENERATION ----------
+function pseudoMovesFor(x,y){
+  const p=pieceAt(x,y); if(p==='.') return [];
+  const c=color(p), t=p.toLowerCase(); const mv=[];
+  const push=(nx,ny)=>{ if(!inside(nx,ny))return; const q=pieceAt(nx,ny); if(q==='.' || color(q)!==c) mv.push([x,y,nx,ny]); };
+
+  if(t==='p'){ // pawns
+    const dy=c===1?-1:1, sy=c===1?6:1;
+    if(pieceAt(x,y+dy)==='.') mv.push([x,y,x,y+dy]);
+    if(y===sy && pieceAt(x,y+dy)==='.' && pieceAt(x,y+2*dy)==='.') mv.push([x,y,x,y+2*dy]);
+    for(const dx of [-1,1]){
+      const nx=x+dx, ny=y+dy;
+      if(inside(nx,ny) && pieceAt(nx,ny)!=='.' && color(pieceAt(nx,ny))!==c) mv.push([x,y,nx,ny]);
+    }
   }
-  if(t=='n'){ for(const [dx,dy] of [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]) push(x+dx,y+dy) }
-  if(t=='b'||t=='r'||t=='q'){
-    const dirs=[]; if(t!='r') dirs.push([1,1],[-1,1],[1,-1],[-1,-1]); if(t!='b') dirs.push([1,0],[-1,0],[0,1],[0,-1]);
-    for(const [dx,dy] of dirs){ let nx=x+dx, ny=y+dy; while(inside(nx,ny)){ if(S[ny][nx]=='.'){mv.push([x,y,nx,ny])} else { if(color(S[ny][nx])!=c) mv.push([x,y,nx,ny]); break } nx+=dx; ny+=dy; } }
+  if(t==='n'){ for(const [dx,dy] of [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]) push(x+dx,y+dy); }
+  if(t==='b' || t==='r' || t==='q'){
+    const dirs=[]; if(t!=='r') dirs.push([1,1],[-1,1],[1,-1],[-1,-1]);
+    if(t!=='b')  dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+    for(const [dx,dy] of dirs){
+      let nx=x+dx, ny=y+dy;
+      while(inside(nx,ny)){
+        const q=pieceAt(nx,ny);
+        if(q==='.'){ mv.push([x,y,nx,ny]); } else { if(color(q)!==color(p)) mv.push([x,y,nx,ny]); break; }
+        nx+=dx; ny+=dy;
+      }
+    }
   }
-  if(t=='k'){ for(const dx of [-1,0,1])for(const dy of [-1,0,1]) if(dx||dy) push(x+dx,y+dy) }
-  return mv.filter(m=>!leavesKingInCheck(m,c));
-}
-function apply(m,flip=true){ const [x,y,nx,ny]=m; const p=S[y][x]; const cap=S[ny][nx]; S[ny][nx]=p; S[y][x]='.'; 
-  if(p=='P'&&ny==0)S[ny][nx]='Q'; if(p=='p'&&ny==7)S[ny][nx]='q'; if(flip) side*=-1; return cap }
-function undoOne(m,cap){ const [x,y,nx,ny]=m; const p=S[ny][nx]; S[y][x]=p; S[ny][nx]=cap; side*=-1 }
-function leavesKingInCheck(m,c){ const cap=apply(m,false); const k=findKing(c); const inC=inCheck(k.x,k.y,c); undoOne(m,cap); return inC }
-function findKing(c){ for(let y=0;y<8;y++)for(let x=0;x<8;x++){ const p=S[y][x]; if(p!='.'&&color(p)==c&&p.toLowerCase()=='k') return {x,y} } }
-function inCheck(xk,yk,c){ const save=side; side=-c; for(let y=0;y<8;y++)for(let x=0;x<8;x++){ if(S[y][x]!='.'&&color(S[y][x])==side){ if(movesAt(x,y).some(m=>m[2]==xk&&m[3]==yk)){ side=save; return true } } } side=save; return false }
-function allMoves(c){ const res=[]; for(let y=0;y<8;y++)for(let x=0;x<8;x++){ if(S[y][x]!='.'&&color(S[y][x])==c) res.push(...movesAt(x,y)); } return res }
-function val(){ let v=0; for(let y=0;y<8;y++)for(let x=0;x<8;x++){ const p=S[y][x]; if(p!='.') v+= (P[p.toLowerCase()]||0)*color(p) } return v }
-function best(depth,player){ if(depth==0) return {score: val()*player};
-  let bestScore=-1e9, bestMove=null; const mv=allMoves(player);
-  for(const m of mv){ const cap=apply(m); const r=best(depth-1,-player); undoOne(m,cap); const s=-r.score; if(s>bestScore){bestScore=s; bestMove=m} }
-  return {score:bestScore, move:bestMove}
+  if(t==='k'){ for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++) if(dx||dy) push(x+dx,y+dy); }
+  return mv;
 }
 
+function findKing(c){
+  for(let y=0;y<8;y++) for(let x=0;x<8;x++){
+    const p=pieceAt(x,y); if(p!=='.' && color(p)===c && p.toLowerCase()==='k') return {x,y};
+  }
+  return null;
+}
+
+function inCheck(c){
+  const k=findKing(c); if(!k) return true;
+  const enemy=-c;
+  for(let y=0;y<8;y++)for(let x=0;x<8;x++){
+    const p=pieceAt(x,y);
+    if(p!=='.' && color(p)===enemy){
+      const moves=pseudoMovesFor(x,y);
+      if(moves.some(m=>m[2]===k.x && m[3]===k.y)) return true;
+    }
+  }
+  return false;
+}
+
+function legalMovesFor(x,y){
+  const c=color(pieceAt(x,y));
+  const res=[];
+  for(const m of pseudoMovesFor(x,y)){
+    const cap=apply(m,false);
+    const chk=inCheck(c);
+    undoOne(m,cap,false);
+    if(!chk) res.push(m);
+  }
+  return res;
+}
+
+// ---------- MAKE / UNDO ----------
+function apply(m,flip=true){
+  const [x,y,nx,ny]=m; const p=pieceAt(x,y); const cap=pieceAt(nx,ny);
+  setPiece(nx,ny,p); setPiece(x,y,'.');
+  // simple promotion
+  if(p==='P' && ny===0) setPiece(nx,ny,'Q');
+  if(p==='p' && ny===7) setPiece(nx,ny,'q');
+  if(flip) side*=-1;
+  return cap;
+}
+function undoOne(m,cap,flip=true){
+  const [x,y,nx,ny]=m; const p=pieceAt(nx,ny);
+  setPiece(x,y,p); setPiece(nx,ny,cap);
+  if(flip) side*=-1;
+}
+
+// ---------- BOT ----------
+function allLegalMoves(c){
+  const out=[];
+  for(let y=0;y<8;y++)for(let x=0;x<8;x++){
+    const p=pieceAt(x,y);
+    if(p!=='.' && color(p)===c){
+      for(const m of legalMovesFor(x,y)) out.push(m);
+    }
+  }
+  return out;
+}
+function evalBoard(){
+  let v=0;
+  for(let y=0;y<8;y++)for(let x=0;x<8;x++){
+    const p=pieceAt(x,y);
+    if(p!=='.') v += (VALUE[p.toLowerCase()]||0) * color(p);
+  }
+  return v;
+}
+function search(depth,turn){
+  if(depth===0) return {score: evalBoard()*turn};
+  let best=-1e9, bestM=null;
+  const moves=allLegalMoves(turn);
+  for(const m of moves){
+    const cap=apply(m);
+    const r=search(depth-1,-turn);
+    undoOne(m,cap);
+    const s=-r.score;
+    if(s>best){best=s; bestM=m;}
+  }
+  return {score:best, move:bestM};
+}
+
+// ---------- UI ----------
 boardEl.addEventListener('click', (e)=>{
   const t=e.target.closest('.sq'); if(!t) return;
   const x=+t.dataset.x, y=+t.dataset.y;
-  if(sel){ const move = hints.find(([, ,tx,ty])=>tx===x&&ty===y);
-    if(move){ movePiece(move); sel=null; hints=[]; draw(); setTimeout(botTurn,120); return; }
-    sel=null; hints=[]; draw();
-  } else if(S[y][x]!='.' && color(S[y][x])==side){
-    sel={x,y}; hints=movesAt(x,y); draw();
+  if(sel){
+    // try to move
+    const mv = hints.find(([, ,tx,ty])=>tx===x&&ty===y);
+    if(mv){ move(mv); sel=null; hints=[]; draw(); setTimeout(botTurn,150); return; }
+    // otherwise reselect
+    sel=null; hints=[];
   }
+  const p=pieceAt(x,y);
+  if(p!=='.' && color(p)===side){
+    sel={x,y};
+    hints=legalMovesFor(x,y);
+  }
+  draw();
 });
-function movePiece(m){ const cap=apply(m); hist.push({m,cap}); status.textContent='Bot thinking…'; }
-function undo(){ const h=hist.pop(); if(!h)return; undoOne(h.m,h.cap); side=1; status.textContent='Your turn: White'; draw() }
-function newGame(){ S=['rnbqkbnr','pppppppp','........','........','........','........','PPPPPPPP','RNBQKBNR'].map(r=>r.split('')); side=1; hist=[]; sel=null; hints=[]; status.textContent='Your turn: White'; draw() }
-function botTurn(){ if(side==-1){ const {move}=best(lvl,-1); if(move){ apply(move); hist.push({m:move,cap:null}); } side=1; status.textContent='Your turn: White'; draw(); } }
 
-draw();
+function move(m){
+  const cap=apply(m);
+  hist.push({m,cap});
+  statusEl.textContent='Bot thinking…';
+}
+function undo(){
+  const h=hist.pop(); if(!h) return;
+  undoOne(h.m,h.cap);
+  sel=null; hints=[];
+  statusEl.textContent = side===1?'Your turn: White':'Your turn: Black';
+  draw();
+}
+function newGame(){
+  S=startPosition(); side=1; hist=[]; sel=null; hints=[];
+  statusEl.textContent='Your turn: White';
+  draw();
+}
+function botTurn(){
+  if(side===-1){
+    const {move}=search(lvl,-1);
+    if(move){ const cap=apply(move); hist.push({m:move,cap}); }
+    statusEl.textContent='Your turn: White';
+    draw();
+  }
+}
+
+// init
+newGame();
 </script></body></html>
