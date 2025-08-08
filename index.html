@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcade Classics Neo</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Cloudflare Analytics -->
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
+    data-cf-beacon='{"token":"YOUR_CF_TOKEN_HERE"}'></script>
+
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+    window.SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+  </script>
+
+  <style>
+    body {
+      background-color: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { color: #00f2ff; }
+    select, button {
+      font-size: 16px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .account {
+      margin-top: 20px;
+      border-top: 1px solid #555;
+      padding-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Arcade Classics Neo</h1>
+
+  <label for="gameSelect">Choose a game:</label><br>
+  <select id="gameSelect">
+    <option value="">-- Select --</option>
+    <option value="games/tetris.html">Tetris</option>
+    <option value="games/snake.html">Snake</option>
+    <option value="games/paper_minecraft.html">Paper Minecraft</option>
+    <option value="games/chess.html">Chess</option>
+  </select>
+  <br>
+  <button onclick="launchGame()">Play</button>
+
+  <div class="account">
+    <h2>Account</h2>
+    <button onclick="signIn()">Sign in with Email</button>
+    <p id="status"></p>
+    <p id="code"></p>
+    <p id="pin"></p>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    const supabaseClient = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+    async function signIn() {
+      const email = prompt("Enter your email:");
+      if (!email) return;
+      const { error } = await supabaseClient.auth.signInWithOtp({ email });
+      if (error) alert(error.message);
+      else alert("Check your email for a login link!");
+    }
+
+    async function launchGame() {
+      const gameUrl = document.getElementById("gameSelect").value;
+      if (gameUrl) {
+        window.location.href = gameUrl;
+      } else {
+        alert("Pick a game first!");
+      }
+    }
+  </script>
+</body>
+</html>
