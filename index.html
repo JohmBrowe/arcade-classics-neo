@@ -5,19 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arcade Classics Neo</title>
 
-  <!-- (Optional) PWA manifest if you add one later -->
-  <!-- <link rel="manifest" href="manifest.json" /> -->
-
-  <!-- Cloudflare Web Analytics (FREE) -->
-  <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
-    data-cf-beacon='{"token":"YOUR_CF_TOKEN_HERE"}'></script>
-
-  <!-- Supabase (auth + DB) -->
+  <!-- Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script>
-    // TODO: replace these with your Supabase values (Settings → API)
-    window.SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-    window.SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+    window.SUPABASE_URL = "https://uleybdwkykcmpwavfgtt.supabase.co";
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZXliZHdreWtjbXB3YXZmZ3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NzAzNjgsImV4cCI6MjA3MDI0NjM2OH0.VdKYBlvEXIBXzD-MyljBB-zjalm0CRIZFeNTJM49_YU";
   </script>
 
   <style>
@@ -26,7 +18,7 @@
     body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
     header { text-align:center; padding:22px 12px; border-bottom:1px solid #2a2a2a; }
     h1 { margin:0 0 8px; font-size:2rem; color:var(--accent); }
-    main { max-width: 920px; margin: 0 auto; padding: 20px 12px 60px; }
+    main { max-width: 920px; margin: 0 auto; padding: 20px 12px 80px; }
     .card { background:var(--panel); border:1px solid #2a2a2a; border-radius:12px; padding:16px; margin:14px 0; }
     label { display:block; margin-bottom:8px; }
     select, button, input { background:#151515; color:var(--text); border:1px solid #2a2a2a; border-radius:10px; padding:10px 12px; font-size:1rem; }
@@ -35,17 +27,19 @@
     .muted { color:var(--muted); font-size:.95rem; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .codebox { background:#0f0f0f; border:1px solid #2a2a2a; border-radius:8px; padding:10px; word-break:break-all; }
+    footer { text-align:center; color:#bfbfbf; margin-top:20px }
+    footer a { color:#66ccff; text-decoration:none; margin:0 6px; }
   </style>
 </head>
 <body>
 
   <header>
     <h1>🎮 Arcade Classics Neo</h1>
-    <div class="muted">Pick a game, hit Play, or sign in to save your early-player code.</div>
+    <div class="muted">Choose a game, tap Play, or sign in for your code & PIN.</div>
   </header>
 
   <main>
-    <!-- Game launcher -->
+    <!-- Game Selector -->
     <div class="card">
       <label for="gameSelect">Choose a game:</label>
       <div class="row">
@@ -59,109 +53,104 @@
       </div>
     </div>
 
-    <!-- Account -->
+    <!-- Account & Code Section -->
     <div class="card">
-      <h2 style="margin:0 0 12px">Account</h2>
-
+      <h2>Account</h2>
       <div id="signedOut">
         <div class="muted" style="margin-bottom:10px">
-          Sign in with your email — we’ll send a magic link (no password).
+          Sign in with your email—you’ll get a magic link.
         </div>
         <div class="row">
           <input id="emailInput" type="email" placeholder="you@example.com" style="min-width:260px" />
-          <button id="sendLinkBtn">Send sign-in link</button>
+          <button id="sendLinkBtn">Send Sign-In Link</button>
         </div>
       </div>
-
       <div id="signedIn" style="display:none">
         <div class="muted" style="margin-bottom:6px">
           Signed in as <span id="who" class="mono"></span>
         </div>
-
         <div style="margin:10px 0">
-          <div style="font-weight:600; margin-bottom:4px">Your Early-Player Code</div>
+          <div><strong>Early-Player Code</strong></div>
           <div id="codeBox" class="codebox mono">…</div>
         </div>
-
         <div style="margin:10px 0">
-          <div style="font-weight:600; margin-bottom:4px">Your 5-Digit PIN</div>
+          <div><strong>5-Digit PIN</strong></div>
           <div id="pinBox" class="codebox mono">…</div>
         </div>
-
         <div class="row">
           <button id="copyCodeBtn">Copy Code</button>
           <button id="emailCodeBtn">Email Code</button>
           <button id="emailPinBtn">Email PIN</button>
-          <span class="muted" style="margin-left:auto">Keep these safe for ad-free perks later.</span>
+          <span class="muted" style="margin-left:auto">Save these to unlock ad-free later.</span>
         </div>
-
         <div class="row" style="margin-top:10px">
           <button id="signOutBtn">Sign out</button>
         </div>
       </div>
     </div>
 
-    <div class="muted">
-      Tip: On iPhone Safari → Share → <strong>Add to Home Screen</strong> to install like an app.
-    </div>
+    <!-- Footer Legal Links -->
+    <footer>
+      <a href="support.html">Support</a> ·
+      <a href="privacy.html">Privacy</a> ·
+      <a href="terms.html">Terms</a> ·
+      <a href="eula.html">EULA</a>
+    </footer>
   </main>
 
   <script>
-    // --- Game launcher ---
     document.getElementById('playBtn').onclick = () => {
-      location.href = document.getElementById('gameSelect').value;
+      window.location.href = document.getElementById('gameSelect').value;
     };
 
-    // --- Supabase Auth + Codes/PIN ---
-    const { createClient } = window.supabase;
-    const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const { createClient } = supabase;
+    const sb = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-    const signedOut = document.getElementById('signedOut');
-    const signedIn  = document.getElementById('signedIn');
-    const who = document.getElementById('who');
-    const emailInput = document.getElementById('emailInput');
-    const sendLinkBtn = document.getElementById('sendLinkBtn');
-    const signOutBtn = document.getElementById('signOutBtn');
-    const codeBox = document.getElementById('codeBox');
-    const pinBox = document.getElementById('pinBox');
-    const copyCodeBtn = document.getElementById('copyCodeBtn');
-    const emailCodeBtn = document.getElementById('emailCodeBtn');
-    const emailPinBtn  = document.getElementById('emailPinBtn');
+    const signedOut = document.getElementById('signedOut'),
+          signedIn = document.getElementById('signedIn'),
+          who = document.getElementById('who'),
+          emailInput = document.getElementById('emailInput'),
+          sendLinkBtn = document.getElementById('sendLinkBtn'),
+          signOutBtn = document.getElementById('signOutBtn'),
+          codeBox = document.getElementById('codeBox'),
+          pinBox = document.getElementById('pinBox'),
+          copyCodeBtn = document.getElementById('copyCodeBtn'),
+          emailCodeBtn = document.getElementById('emailCodeBtn'),
+          emailPinBtn = document.getElementById('emailPinBtn');
 
     function genPIN() { return String(Math.floor(Math.random()*100000)).padStart(5,'0'); }
-    function genCode(len=20){
+    function genCode(len=20) {
       const bytes = new Uint8Array(len);
       crypto.getRandomValues(bytes);
-      const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+      const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
     }
 
-    async function ensureProfileAndSecrets(user){
-      // 1) profile (email + PIN)
-      let { data: prof } = await supabase
-        .from('profiles').select('email,pin').eq('id', user.id).maybeSingle();
-
+    async function ensureProfileAndSecrets(user) {
+      let { data: prof } = await sb
+        .from('profiles').select('email,pin')
+        .eq('id', user.id).maybeSingle();
       if (!prof) {
         prof = { email: user.email, pin: genPIN() };
-        await supabase.from('profiles').insert({ id: user.id, email: prof.email, pin: prof.pin });
+        await sb.from('profiles').insert({ id: user.id, email: prof.email, pin: prof.pin });
       } else if (!prof.pin) {
         prof.pin = genPIN();
-        await supabase.from('profiles').update({ pin: prof.pin }).eq('id', user.id);
+        await sb.from('profiles').update({ pin: prof.pin }).eq('id', user.id);
       }
 
-      // 2) early-player code
-      let { data: pcode } = await supabase
-        .from('player_codes').select('code').eq('user_id', user.id).maybeSingle();
+      let { data: pcode } = await sb
+        .from('player_codes').select('code')
+        .eq('user_id', user.id).maybeSingle();
       if (!pcode) {
         const code = genCode();
-        await supabase.from('player_codes').insert({ user_id: user.id, code });
+        await sb.from('player_codes').insert({ user_id: user.id, code });
         pcode = { code };
       }
       return { pin: prof.pin, code: pcode.code };
     }
 
-    async function refreshUI(){
-      const { data: { user } } = await supabase.auth.getUser();
+    async function refreshUI() {
+      const { data: { user }} = await sb.auth.getUser();
       if (!user) {
         signedOut.style.display = '';
         signedIn.style.display = 'none';
@@ -169,53 +158,52 @@
       }
       signedOut.style.display = 'none';
       signedIn.style.display = '';
-      who.textContent = user.email || '(no email?)';
+      who.textContent = user.email;
 
       const { pin, code } = await ensureProfileAndSecrets(user);
       pinBox.textContent = pin;
       codeBox.textContent = code;
     }
 
-    // Send magic sign-in link
     sendLinkBtn.onclick = async () => {
-      const email = (emailInput.value || '').trim();
-      if (!email) return alert('Enter your email first.');
-      const { error } = await supabase.auth.signInWithOtp({
+      const email = emailInput.value.trim();
+      if (!email) return alert('Please enter your email.');
+      const { error } = await sb.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: location.href } // add this URL to Supabase Auth Redirects
+        options: { emailRedirectTo: location.href }
       });
-      if (error) alert('Error: ' + error.message);
-      else alert('Check your inbox for the sign-in link!');
+      if (error) alert(error.message);
+      else alert('Check your email for sign-in link.');
     };
 
-    // Sign out
-    signOutBtn.onclick = async () => { await supabase.auth.signOut(); refreshUI(); };
+    signOutBtn.onclick = async () => {
+      await sb.auth.signOut();
+      refreshUI();
+    };
 
-    // Copy / Email helpers
     copyCodeBtn.onclick = async () => {
-      try { await navigator.clipboard.writeText(codeBox.textContent); alert('Code copied!'); }
-      catch { alert('Copy failed. Select the text and copy manually.'); }
-    };
-    emailCodeBtn.onclick = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return alert('Sign in first.');
-      location.href = 'mailto:' + encodeURIComponent(user.email)
-        + '?subject=' + encodeURIComponent('Your Arcade Classics Neo Early-Player Code')
-        + '&body=' + encodeURIComponent('Your code: ' + codeBox.textContent + '\n\nKeep this for ad-free perks later.');
-    };
-    emailPinBtn.onclick = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return alert('Sign in first.');
-      location.href = 'mailto:' + encodeURIComponent(user.email)
-        + '?subject=' + encodeURIComponent('Your Arcade Classics Neo 5-Digit PIN')
-        + '&body=' + encodeURIComponent('Your PIN: ' + pinBox.textContent + '\n\nKeep this for your records.');
+      try {
+        await navigator.clipboard.writeText(codeBox.textContent);
+        alert('Code copied!');
+      } catch {
+        alert('Failed to copy—please copy manually.');
+      }
     };
 
-    // React to auth state
-    supabase.auth.onAuthStateChange(() => refreshUI());
+    emailCodeBtn.onclick = async () => {
+      const { data: { user }} = await sb.auth.getUser();
+      if (!user.email) return alert('Sign in first.');
+      location.href = `mailto:${encodeURIComponent(user.email)}?subject=${encodeURIComponent('Your Arcade Classics Neo Code')}&body=${encodeURIComponent('Code: ' + codeBox.textContent)}`;
+    };
+
+    emailPinBtn.onclick = async () => {
+      const { data: { user }} = await sb.auth.getUser();
+      if (!user.email) return alert('Sign in first.');
+      location.href = `mailto:${encodeURIComponent(user.email)}?subject=${encodeURIComponent('Your Arcade Classics Neo PIN')}&body=${encodeURIComponent('PIN: ' + pinBox.textContent)}`;
+    };
+
+    sb.auth.onAuthStateChange(() => refreshUI());
     refreshUI();
   </script>
 </body>
 </html>
-
-
