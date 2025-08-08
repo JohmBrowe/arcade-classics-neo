@@ -6,7 +6,8 @@
   #ui{position:fixed;inset:auto 0 0 0;display:flex;gap:8px;justify-content:center;padding:10px;background:linear-gradient(0,#000,transparent)}
   button{background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:10px 14px;font-size:16px}
   #wrap{display:grid;place-items:center;height:100%}
-  canvas{image-rendering:pixelated;touch-action:none}
+  /* add a subtle outer border/shadow around the canvas */
+  canvas{image-rendering:pixelated;touch-action:none;border-radius:8px;box-shadow:0 0 0 3px #0b0b0b, 0 8px 28px rgba(0,0,0,.45)}
 </style></head><body>
 <div id="wrap"><canvas id="c" width="240" height="480"></canvas></div>
 <div id="ui">
@@ -25,35 +26,65 @@ let cur,next,px,py,rot,score=0,over=false,paused=false,dropT=0,spd=600;
 
 function rnd(n){return Math.floor(Math.random()*n)}
 function spawn(){cur=next||rnd(7)+1; next=rnd(7)+1; px=3; py=0; rot=0; if(collide(px,py,rot)) {over=true}}
-function shape(id,r){
-  let m=SHAPES[id-1]; for(let i=0;i<r;i++) m=rotR(m); return m
-}
+function shape(id,r){let m=SHAPES[id-1]; for(let i=0;i<r;i++) m=rotR(m); return m}
 function rotR(m){const h=m.length,w=m[0].length;const o=[...Array(w)].map(_=>Array(h).fill(0));
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)o[x][h-1-y]=m[y][x];return o}
 function collide(x,y,r){const m=shape(cur,r); for(let j=0;j<m.length;j++)for(let i=0;i<m[0].length;i++){
   if(!m[j][i])continue; const nx=x+i, ny=y+j; if(nx<0||nx>=W||ny>=H||ny<0) return true; if(ny>=0&&grid[ny][nx])return true;} return false}
 function merge(){const m=shape(cur,rot); for(let j=0;j<m.length;j++)for(let i=0;i<m[0].length;i++){ if(m[j][i]&&py+j>=0) grid[py+j][px+i]=cur; } }
 function clearLines(){let k=0; for(let y=H-1;y>=0;y--){ if(grid[y].every(v=>v)){grid.splice(y,1);grid.unshift(Array(W).fill(0));k++;y++;} } score+= [0,40,100,300,1200][k]||0; spd=Math.max(120,600- Math.floor(score/200)*30)}
-function step(t){ if(paused){draw(); requestAnimationFrame(step); return}
+
+function step(t){ if(paused){draw(); return requestAnimationFrame(step)}
   if(over){draw(); return}
   if(!dropT) dropT=t; if(t-dropT>spd){ if(!collide(px,py+1,rot)){py++} else { merge(); clearLines(); spawn(); } dropT=t }
   draw(); requestAnimationFrame(step)
 }
+
 function draw(){
+  // background field
   ctx.fillStyle='#000'; ctx.fillRect(0,0,cvs.width,cvs.height);
-  // board
+
+  // faint grid so edges and width are obvious
+  ctx.strokeStyle='#1d1d1d'; ctx.lineWidth=1;
+  for(let x=1;x<W;x++){ ctx.beginPath(); ctx.moveTo(x*S+0.5,0.5); ctx.lineTo(x*S+0.5,H*S-0.5); ctx.stroke(); }
+  for(let y=1;y<H;y++){ ctx.beginPath(); ctx.moveTo(0.5,y*S+0.5); ctx.lineTo(W*S-0.5,y*S+0.5); ctx.stroke(); }
+
+  // blocks already placed
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){ let v=grid[y][x]; if(v){ctx.fillStyle=COL[v]; ctx.fillRect(x*S,y*S,S-1,S-1)}}
-  // piece
-  if(!over){ const m=shape(cur,rot); ctx.fillStyle=COL[cur]; for(let j=0;j<m.length;j++)for(let i=0;i<m[0].length;i++) if(m[j][i]) ctx.fillRect((px+i)*S,(py+j)*S,S-1,S-1) }
+
+  // current piece
+  if(!over){ const m=shape(cur,rot); ctx.fillStyle=COL[cur];
+    for(let j=0;j<m.length;j++)for(let i=0;i<m[0].length;i++) if(m[j][i]) ctx.fillRect((px+i)*S,(py+j)*S,S-1,S-1);
+  }
+
+  // **clear, high-contrast border around playfield**
+  ctx.lineWidth=3;
+  ctx.strokeStyle='#5fd1ff';          // bright cyan border
+  ctx.strokeRect(0.5,0.5,W*S-1,H*S-1);
+
   // HUD
-  ctx.fillStyle='#fff'; ctx.font='16px system-ui'; ctx.fillText('Score: '+score, 4,18); if(over)ctx.fillText('GAME OVER (tap ⏯ to restart)',4,38); if(paused)ctx.fillText('PAUSED',4,38);
+  ctx.fillStyle='#fff'; ctx.font='16px system-ui'; 
+  ctx.fillText('Score: '+score, 6,18); 
+  if(over)ctx.fillText('GAME OVER (tap ⏯ to restart)',6,38); 
+  if(paused)ctx.fillText('PAUSED',6,38);
 }
+
 function L(){ if(!collide(px-1,py,rot)) px-- }
 function R(){ if(!collide(px+1,py,rot)) px++ }
 function D(){ if(!collide(px,py+1,rot)) py++ }
 function Rot(){ const r=(rot+1)%4; if(!collide(px,py,r)) rot=r }
 function Drop(){ while(!collide(px,py+1,rot)) py++; D() }
 function toggle(){ if(over){ grid=[...Array(H)].map(_=>Array(W).fill(0)); score=0; spd=600; over=false; spawn(); } else paused=!paused }
-addEventListener('keydown',e=>{const k=e.key; if(k==='ArrowLeft'||k==='a')L(); else if(k==='ArrowRight'||k==='d')R(); else if(k==='ArrowDown'||k==='s')D(); else if(k==='ArrowUp'||k==='w' || k==='x')Rot(); else if(k===' ')Drop(); else if(k==='p')toggle()});
+
+addEventListener('keydown',e=>{
+  const k=e.key;
+  if(k==='ArrowLeft'||k==='a')L();
+  else if(k==='ArrowRight'||k==='d')R();
+  else if(k==='ArrowDown'||k==='s')D();
+  else if(k==='ArrowUp'||k==='w'||k==='x')Rot();
+  else if(k===' ')Drop();
+  else if(k==='p')toggle();
+});
+
 spawn(); requestAnimationFrame(step);
 </script></body></html>
