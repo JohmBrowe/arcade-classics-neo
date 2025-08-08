@@ -4,7 +4,7 @@
 <style>
   html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui}
   #wrap{display:grid;place-items:center;height:100%}
-  canvas{image-rendering:pixelated;touch-action:none}
+  canvas{image-rendering:pixelated;touch-action:none;border-radius:8px;box-shadow:0 0 0 3px #0b0b0b, 0 8px 28px rgba(0,0,0,.45)}
   #ui{position:fixed;inset:auto 0 0 0;display:flex;gap:8px;justify-content:center;padding:10px;background:linear-gradient(0,#000,transparent)}
   button{background:#111;color:#fff;border:1px solid #444;border-radius:10px;padding:10px 14px;font-size:16px}
 </style></head><body>
@@ -17,7 +17,9 @@
   <button onclick="toggle()">⏯</button>
 </div>
 <script>
-const S=20, W=18, H=24; const ctx=c.getContext('2d'); let snake=[[9,12]], vx=1,vy=0, food=spawn(), over=false, paused=false, score=0, t0=0, spd=110;
+const S=20, W=18, H=24; const ctx=c.getContext('2d'); 
+let snake=[[9,12]], vx=1,vy=0, food=spawn(), over=false, paused=false, score=0, t0=0, spd=110;
+
 function spawn(){ let x,y; do{ x=Math.floor(Math.random()*W); y=Math.floor(Math.random()*H)}while(snake.some(p=>p[0]==x&&p[1]==y)); return [x,y]}
 function step(t){ if(paused||over){draw(); return requestAnimationFrame(step)}
   if(!t0||t-t0>spd){ t0=t; const nx=snake[0][0]+vx, ny=snake[0][1]+vy;
@@ -26,10 +28,21 @@ function step(t){ if(paused||over){draw(); return requestAnimationFrame(step)}
   }
   draw(); requestAnimationFrame(step)
 }
-function draw(){ ctx.fillStyle='#000'; ctx.fillRect(0,0,c.width,c.height);
-  ctx.fillStyle='#0f0'; snake.forEach(([x,y],i)=>{ctx.fillRect(x*S,y*S,S-1,S-1)})
+function draw(){ 
+  // board + faint grid
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,c.width,c.height);
+  ctx.strokeStyle='#1d1d1d'; ctx.lineWidth=1;
+  for(let x=1;x<W;x++){ ctx.beginPath(); ctx.moveTo(x*S+0.5,0.5); ctx.lineTo(x*S+0.5,H*S-0.5); ctx.stroke(); }
+  for(let y=1;y<H;y++){ ctx.beginPath(); ctx.moveTo(0.5,y*S+0.5); ctx.lineTo(W*S-0.5,y*S+0.5); ctx.stroke(); }
+  // bright border
+  ctx.lineWidth=3; ctx.strokeStyle='#ffd44d'; ctx.strokeRect(0.5,0.5,W*S-1,H*S-1);
+
+  ctx.fillStyle='#0f0'; snake.forEach(([x,y])=>ctx.fillRect(x*S,y*S,S-1,S-1));
   ctx.fillStyle='#f33'; ctx.fillRect(food[0]*S,food[1]*S,S-1,S-1)
-  ctx.fillStyle='#fff'; ctx.font='16px system-ui'; ctx.fillText('Score: '+score,6,18); if(over)ctx.fillText('GAME OVER (⏯ to restart)',6,38); if(paused)ctx.fillText('PAUSED',6,38);
+  ctx.fillStyle='#fff'; ctx.font='16px system-ui'; 
+  ctx.fillText('Score: '+score,6,18); 
+  if(over)ctx.fillText('GAME OVER (⏯ to restart)',6,38); 
+  if(paused)ctx.fillText('PAUSED',6,38);
 }
 function dir(x,y){ if(-x!=vx||-y!=vy){ vx=x; vy=y } }
 function toggle(){ if(over){ snake=[[9,12]]; vx=1;vy=0; food=spawn(); over=false; score=0; spd=110 } else paused=!paused }
