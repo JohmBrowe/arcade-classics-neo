@@ -1,0 +1,23 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Developer Notes — Arcade Classics Neo</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;line-height:1.6;background:#0b0f1c;color:#e8e8ff}
+a{color:#66ccff} header,main{max-width:900px;margin:0 auto;padding:20px} header{border-bottom:1px solid #24304e} h1{margin:6px 0}
+.card{background:#101a2e;border:1px solid #24304e;border-radius:12px;padding:16px;margin:12px 0}
+code{background:#0b0f1c;border:1px solid #24304e;border-radius:6px;padding:2px 6px}</style></head><body>
+<header><a href="./">← Home</a><h1>Developer Notes</h1></header>
+<main>
+<div class="card"><h2>Stack & Hosting</h2>
+<ul>
+  <li>Static hosting: GitHub Pages</li>
+  <li>Auth/DB: Supabase (email magic links, profiles, player_codes)</li>
+  <li>Analytics: Cloudflare Web Analytics</li>
+</ul></div>
+
+<div class="card"><h2>Data model</h2>
+<pre><code>profiles(id uuid PK → auth.users, email text unique, pin text, created_at timestamptz)
+player_codes(user_id uuid PK → auth.users, code text unique, created_at timestamptz)
+</code></pre></div>
+
+<div class="card"><h2>Contact</h2>
+<p>Questions, bugs, ideas: <a href="mailto:support@yourdomain.com">support@yourdomain.com</a></p></div>
+</main></body></html>
